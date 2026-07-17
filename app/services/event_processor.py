@@ -7,13 +7,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.db.models import EventRecord, InferenceRecord
 from app.domain.leads import Lead
+from app.domain.processed import ProcessedLeadEvent
+from app.services.notifier import NotificationResult, Notifier, select_notifier
 from app.services.summarizer import LeadSummarizer, SummaryOutcome, select_provider
+
+
+class ProcessingOutcome:
+    """The summary and downstream notification outcomes for one event."""
+
+    def __init__(self, summary: SummaryOutcome, notification: NotificationResult) -> None:
+        self.summary = summary
+        self.notification = notification
 
 
 class EventProcessor:
     """Run summary generation and persist resulting provider metadata."""
 
-    def __init__(self, session: AsyncSession, summarizer: LeadSummarizer | None = None) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        summarizer: LeadSummarizer | None = None,
+        notifier: Notifier | None = None,
+    ) -> None:
         self._session = session
         settings = get_settings()
         secondary_provider = (
@@ -24,8 +39,9 @@ class EventProcessor:
         self._summarizer = summarizer or LeadSummarizer(
             select_provider(settings), secondary_provider
         )
+        self._notifier = notifier or select_notifier(settings)
 
-    async def process(self, event: EventRecord, lead: Lead) -> SummaryOutcome:
+    async def process(self, event: EventRecord, lead: Lead) -> ProcessingOutcome:
         """Summarize a persisted event and mark its processing lifecycle complete."""
         event.status = "processing"
         event.attempt_count += 1
@@ -50,7 +66,19 @@ class EventProcessor:
                     error_message=attempt.error_message,
                 )
             )
-        event.status = "completed"
+        notification = await self._notifier.send(
+            ProcessedLeadEvent(
+                event_id=event.external_event_id,
+                lead=lead,
+                summary=outcome.result.summary,
+                fallback_used=outcome.fallback_used,
+            )
+        )
+        if notification.success:
+            event.status = "completed"
+        else:
+            event.status = "partially_completed"
+            event.error_message = f"{notification.provider}: {notification.error_message}"
         event.processed_at = datetime.now(UTC)
         await self._session.commit()
-        return outcome
+        return ProcessingOutcome(summary=outcome, notification=notification)

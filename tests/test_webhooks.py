@@ -122,3 +122,26 @@ def test_invalid_payload_is_rejected() -> None:
         )
 
     assert response.status_code == 422
+
+
+def test_notification_configuration_failure_marks_event_partially_completed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A notification error preserves the completed summary and surfaces a warning."""
+    monkeypatch.setenv("NOTIFICATION_PROVIDER", "slack")
+    get_settings.cache_clear()
+    with TestClient(app) as client:
+        response = client.post(
+            "/webhooks/highlevel",
+            headers={"X-Webhook-Secret": "test-webhook-secret"},
+            json=_payload("evt_notification_failure"),
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "partially_completed",
+        "event_id": "evt_notification_failure",
+        "duplicate": False,
+        "fallback_used": False,
+        "warnings": ["Slack webhook URL is not configured."],
+    }

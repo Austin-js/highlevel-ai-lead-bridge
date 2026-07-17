@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     max_retry_attempts: int = Field(default=3, ge=1, le=10)
     http_timeout_seconds: int = Field(default=15, ge=1, le=120)
+    notification_provider: str = "none"
+    slack_webhook_url: str | None = None
+    discord_webhook_url: str | None = None
 
 
 @lru_cache

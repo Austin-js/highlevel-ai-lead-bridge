@@ -52,9 +52,15 @@ async def receive_highlevel_webhook(
         return WebhookReceipt(status="duplicate", event_id=event_id, duplicate=True)
 
     outcome = await EventProcessor(session).process(event, lead)
+    warnings = (
+        [outcome.notification.error_message or "Notification delivery failed."]
+        if not outcome.notification.success
+        else None
+    )
     return WebhookReceipt(
-        status="completed",
+        status="completed" if outcome.notification.success else "partially_completed",
         event_id=event_id,
         duplicate=False,
-        fallback_used=outcome.fallback_used,
+        fallback_used=outcome.summary.fallback_used,
+        warnings=warnings,
     )

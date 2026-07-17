@@ -37,3 +37,4 @@ class WebhookReceipt(BaseModel):
     event_id: str
     duplicate: bool
     fallback_used: bool | None = None
+    warnings: list[str] | None = None
