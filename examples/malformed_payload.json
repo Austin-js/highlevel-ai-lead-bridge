@@ -1,0 +1,5 @@
+{
+  "event_id": "evt_invalid_001",
+  "event_type": "contact.created",
+  "contact": "not-an-object"
+}

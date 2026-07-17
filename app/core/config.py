@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = Field(default=8000, ge=1, le=65535)
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
+    webhook_shared_secret: str | None = None
+    webhook_secret_header: str = "X-Webhook-Secret"
 
 
 @lru_cache

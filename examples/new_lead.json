@@ -1,0 +1,18 @@
+{
+  "event_id": "evt_demo_001",
+  "event_type": "contact.created",
+  "location_id": "loc_demo_001",
+  "contact": {
+    "id": "contact_demo_001",
+    "first_name": "Maria",
+    "last_name": "Santos",
+    "email": "maria.santos@example.com",
+    "phone": "+639171234567",
+    "source": "Facebook Ads",
+    "custom_fields": {
+      "service_requested": "Dental implants",
+      "preferred_schedule": "Saturday morning",
+      "message": "I would like to ask about installment options."
+    }
+  }
+}

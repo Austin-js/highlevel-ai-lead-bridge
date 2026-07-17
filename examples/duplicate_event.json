@@ -1,0 +1,10 @@
+{
+  "event_id": "evt_demo_001",
+  "event_type": "contact.created",
+  "location_id": "loc_demo_001",
+  "contact": {
+    "id": "contact_demo_001",
+    "first_name": "Maria",
+    "last_name": "Santos"
+  }
+}
