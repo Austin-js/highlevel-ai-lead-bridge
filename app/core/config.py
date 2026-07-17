@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     llm_secondary_provider: str | None = None
     llm_input_cost_per_million: float | None = Field(default=None, ge=0)
     llm_output_cost_per_million: float | None = Field(default=None, ge=0)
+    openai_api_key: str | None = None
+    ollama_base_url: str = "http://localhost:11434"
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    max_retry_attempts: int = Field(default=3, ge=1, le=10)
+    http_timeout_seconds: int = Field(default=15, ge=1, le=120)
 
 
 @lru_cache

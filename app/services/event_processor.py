@@ -15,7 +15,15 @@ class EventProcessor:
 
     def __init__(self, session: AsyncSession, summarizer: LeadSummarizer | None = None) -> None:
         self._session = session
-        self._summarizer = summarizer or LeadSummarizer(select_provider(get_settings()))
+        settings = get_settings()
+        secondary_provider = (
+            select_provider(settings, settings.llm_secondary_provider)
+            if settings.llm_secondary_provider
+            else None
+        )
+        self._summarizer = summarizer or LeadSummarizer(
+            select_provider(settings), secondary_provider
+        )
 
     async def process(self, event: EventRecord, lead: Lead) -> SummaryOutcome:
         """Summarize a persisted event and mark its processing lifecycle complete."""
@@ -25,33 +33,23 @@ class EventProcessor:
         await self._session.commit()
 
         outcome = await self._summarizer.summarize(lead)
-        if outcome.fallback_used:
+        for attempt in outcome.attempts:
             self._session.add(
                 InferenceRecord(
                     event_id=event.id,
-                    provider=outcome.failed_provider or "unknown",
-                    model=outcome.failed_model or "unknown",
-                    latency_ms=outcome.failed_latency_ms,
-                    success=False,
-                    fallback_used=True,
-                    error_message=outcome.provider_error,
+                    provider=attempt.provider,
+                    model=attempt.model,
+                    input_tokens=attempt.result.input_tokens if attempt.result else None,
+                    output_tokens=attempt.result.output_tokens if attempt.result else None,
+                    estimated_cost_usd=(
+                        attempt.result.estimated_cost_usd if attempt.result else None
+                    ),
+                    latency_ms=attempt.latency_ms,
+                    success=attempt.success,
+                    fallback_used=attempt.fallback_used,
+                    error_message=attempt.error_message,
                 )
             )
-
-        result = outcome.result
-        self._session.add(
-            InferenceRecord(
-                event_id=event.id,
-                provider=result.provider,
-                model=result.model,
-                input_tokens=result.input_tokens,
-                output_tokens=result.output_tokens,
-                estimated_cost_usd=result.estimated_cost_usd,
-                latency_ms=result.latency_ms,
-                success=True,
-                fallback_used=outcome.fallback_used,
-            )
-        )
         event.status = "completed"
         event.processed_at = datetime.now(UTC)
         await self._session.commit()

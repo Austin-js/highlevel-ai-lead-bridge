@@ -24,6 +24,25 @@ class ProviderResult:
     latency_ms: int | None
 
 
+def estimate_cost_usd(
+    input_tokens: int | None,
+    output_tokens: int | None,
+    input_cost_per_million: float | None,
+    output_cost_per_million: float | None,
+) -> float | None:
+    """Calculate configurable token cost, or return unknown when data is incomplete."""
+    if (
+        input_tokens is None
+        or output_tokens is None
+        or input_cost_per_million is None
+        or output_cost_per_million is None
+    ):
+        return None
+    return (
+        input_tokens * input_cost_per_million + output_tokens * output_cost_per_million
+    ) / 1_000_000
+
+
 class LeadSummarizerProvider(Protocol):
     """Interface shared by all hosted and local LLM implementations."""
 
