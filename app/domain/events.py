@@ -36,3 +36,4 @@ class WebhookReceipt(BaseModel):
     status: str
     event_id: str
     duplicate: bool
+    fallback_used: bool | None = None

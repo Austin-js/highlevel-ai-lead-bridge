@@ -9,13 +9,17 @@ from app.db.models import EventRecord
 from app.db.repositories import create_event, find_duplicate_event
 from app.db.session import get_db_session
 from app.domain.events import HighLevelEventPayload, WebhookReceipt
+from app.services.event_processor import EventProcessor
 from app.services.lead_normalizer import derive_event_id, normalize_lead, stable_payload_hash
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
 @router.post(
-    "/highlevel", response_model=WebhookReceipt, dependencies=[Depends(verify_webhook_secret)]
+    "/highlevel",
+    response_model=WebhookReceipt,
+    response_model_exclude_none=True,
+    dependencies=[Depends(verify_webhook_secret)],
 )
 async def receive_highlevel_webhook(
     payload: HighLevelEventPayload,
@@ -47,4 +51,10 @@ async def receive_highlevel_webhook(
         await session.rollback()
         return WebhookReceipt(status="duplicate", event_id=event_id, duplicate=True)
 
-    return WebhookReceipt(status="received", event_id=event_id, duplicate=False)
+    outcome = await EventProcessor(session).process(event, lead)
+    return WebhookReceipt(
+        status="completed",
+        event_id=event_id,
+        duplicate=False,
+        fallback_used=outcome.fallback_used,
+    )

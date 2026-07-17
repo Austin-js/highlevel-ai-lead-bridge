@@ -52,7 +52,12 @@ def test_valid_webhook_is_persisted() -> None:
         )
 
     assert response.status_code == 200
-    assert response.json() == {"status": "received", "event_id": "evt_test_001", "duplicate": False}
+    assert response.json() == {
+        "status": "completed",
+        "event_id": "evt_test_001",
+        "duplicate": False,
+        "fallback_used": False,
+    }
 
 
 def test_missing_secret_is_rejected() -> None:

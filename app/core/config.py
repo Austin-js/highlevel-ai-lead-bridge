@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
     webhook_shared_secret: str | None = None
     webhook_secret_header: str = "X-Webhook-Secret"
+    llm_provider: str = "mock"
+    llm_model: str = "demo"
+    llm_timeout_seconds: int = Field(default=30, ge=1, le=300)
+    llm_secondary_provider: str | None = None
+    llm_input_cost_per_million: float | None = Field(default=None, ge=0)
+    llm_output_cost_per_million: float | None = Field(default=None, ge=0)
 
 
 @lru_cache
