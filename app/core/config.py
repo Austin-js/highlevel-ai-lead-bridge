@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     notification_provider: str = "none"
     slack_webhook_url: str | None = None
     discord_webhook_url: str | None = None
+    highlevel_sync_enabled: bool = False
+    highlevel_api_base_url: str = "https://services.leadconnectorhq.com"
+    highlevel_api_token: str | None = None
+    highlevel_location_id: str | None = None
+    highlevel_summary_tag: str | None = "ai-reviewed"
+    highlevel_high_intent_tag: str | None = "high-intent"
+    highlevel_recommended_action_field_id: str | None = None
 
 
 @lru_cache

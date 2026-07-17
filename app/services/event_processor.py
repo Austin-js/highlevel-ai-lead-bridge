@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.db.models import EventRecord, InferenceRecord
 from app.domain.leads import Lead
 from app.domain.processed import ProcessedLeadEvent
+from app.services.highlevel_sync import HighLevelSync, HighLevelSyncResult, select_highlevel_sync
 from app.services.notifier import NotificationResult, Notifier, select_notifier
 from app.services.summarizer import LeadSummarizer, SummaryOutcome, select_provider
 
@@ -15,9 +16,15 @@ from app.services.summarizer import LeadSummarizer, SummaryOutcome, select_provi
 class ProcessingOutcome:
     """The summary and downstream notification outcomes for one event."""
 
-    def __init__(self, summary: SummaryOutcome, notification: NotificationResult) -> None:
+    def __init__(
+        self,
+        summary: SummaryOutcome,
+        notification: NotificationResult,
+        highlevel_sync: HighLevelSyncResult,
+    ) -> None:
         self.summary = summary
         self.notification = notification
+        self.highlevel_sync = highlevel_sync
 
 
 class EventProcessor:
@@ -28,6 +35,7 @@ class EventProcessor:
         session: AsyncSession,
         summarizer: LeadSummarizer | None = None,
         notifier: Notifier | None = None,
+        highlevel_sync: HighLevelSync | None = None,
     ) -> None:
         self._session = session
         settings = get_settings()
@@ -40,6 +48,7 @@ class EventProcessor:
             select_provider(settings), secondary_provider
         )
         self._notifier = notifier or select_notifier(settings)
+        self._highlevel_sync = highlevel_sync or select_highlevel_sync(settings)
 
     async def process(self, event: EventRecord, lead: Lead) -> ProcessingOutcome:
         """Summarize a persisted event and mark its processing lifecycle complete."""
@@ -66,19 +75,29 @@ class EventProcessor:
                     error_message=attempt.error_message,
                 )
             )
-        notification = await self._notifier.send(
-            ProcessedLeadEvent(
-                event_id=event.external_event_id,
-                lead=lead,
-                summary=outcome.result.summary,
-                fallback_used=outcome.fallback_used,
-            )
+        processed_event = ProcessedLeadEvent(
+            event_id=event.external_event_id,
+            lead=lead,
+            summary=outcome.result.summary,
+            fallback_used=outcome.fallback_used,
         )
-        if notification.success:
+        notification = await self._notifier.send(processed_event)
+        highlevel_sync = await self._highlevel_sync.sync(processed_event)
+        if notification.success and highlevel_sync.success:
             event.status = "completed"
         else:
             event.status = "partially_completed"
-            event.error_message = f"{notification.provider}: {notification.error_message}"
+            errors = [
+                f"{notification.provider}: {notification.error_message}"
+                if not notification.success
+                else None,
+                *highlevel_sync.warnings,
+            ]
+            event.error_message = "; ".join(error for error in errors if error)
         event.processed_at = datetime.now(UTC)
         await self._session.commit()
-        return ProcessingOutcome(summary=outcome, notification=notification)
+        return ProcessingOutcome(
+            summary=outcome,
+            notification=notification,
+            highlevel_sync=highlevel_sync,
+        )

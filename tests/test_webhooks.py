@@ -145,3 +145,26 @@ def test_notification_configuration_failure_marks_event_partially_completed(
         "fallback_used": False,
         "warnings": ["Slack webhook URL is not configured."],
     }
+
+
+def test_highlevel_configuration_failure_marks_event_partially_completed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Optional CRM sync errors are returned without discarding the lead summary."""
+    monkeypatch.setenv("HIGHLEVEL_SYNC_ENABLED", "true")
+    get_settings.cache_clear()
+    with TestClient(app) as client:
+        response = client.post(
+            "/webhooks/highlevel",
+            headers={"X-Webhook-Secret": "test-webhook-secret"},
+            json=_payload("evt_highlevel_failure"),
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "partially_completed",
+        "event_id": "evt_highlevel_failure",
+        "duplicate": False,
+        "fallback_used": False,
+        "warnings": ["HIGHLEVEL_API_TOKEN is not configured."],
+    }
