@@ -2,11 +2,12 @@
 
 import pytest
 
+from app.core.config import Settings
 from app.domain.leads import Lead
 from app.domain.summaries import LeadSummary
 from app.providers.base import ProviderError, ProviderResult
 from app.providers.mock import MockLeadSummarizerProvider
-from app.services.summarizer import LeadSummarizer
+from app.services.summarizer import LeadSummarizer, select_provider
 
 
 def _lead() -> Lead:
@@ -64,3 +65,22 @@ def test_lead_summary_rejects_invalid_constrained_values() -> None:
             recommended_action="Call the lead.",
             confidence=0.8,
         )
+
+
+def test_provider_selection_supports_configured_provider_types() -> None:
+    """Configured adapters are selected without making any outbound request."""
+    openai = select_provider(
+        Settings(llm_provider="openai", llm_model="test", openai_api_key="test-key")
+    )
+    ollama = select_provider(Settings(llm_provider="ollama", llm_model="test"))
+    compatible = select_provider(
+        Settings(
+            llm_provider="openai_compatible",
+            llm_model="test",
+            llm_base_url="http://llm.example.com/v1",
+        )
+    )
+
+    assert openai.provider_name == "openai"
+    assert ollama.provider_name == "ollama"
+    assert compatible.provider_name == "openai_compatible"
