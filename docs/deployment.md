@@ -11,6 +11,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 Set a strong `WEBHOOK_SHARED_SECRET`, production database URL, and only the integrations you intend to enable.
 
+For a production database, set `DATABASE_AUTO_CREATE=false` and apply the versioned schema explicitly:
+
+```powershell
+alembic upgrade head
+```
+
 ## Docker Compose
 
 ```powershell
@@ -19,6 +25,8 @@ docker compose up --build
 ```
 
 The Compose configuration persists SQLite data in `./data`. Back up that path, or point `DATABASE_URL` at managed PostgreSQL for a production deployment.
+
+For the included local PostgreSQL profile, configure `DATABASE_URL=postgresql+asyncpg://highlevel:change-me@postgres:5432/highlevel_lead_bridge`, then run `docker compose --profile postgres up --build` and apply `alembic upgrade head` from the application container.
 
 ## VPS and HTTPS
 

@@ -43,7 +43,9 @@ async def get_db_session() -> AsyncIterator[AsyncSession]:
 
 
 async def initialize_database() -> None:
-    """Create application tables during the initial foundation phase."""
+    """Create tables for simple local development when explicitly enabled."""
+    if not get_settings().database_auto_create:
+        return
     async with get_engine().begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 

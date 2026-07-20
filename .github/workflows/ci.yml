@@ -31,5 +31,17 @@ jobs:
         run: |
           coverage run -m pytest
           coverage report
+      - name: Validate database migration
+        run: DATABASE_URL=sqlite:///./migration-verify.db alembic upgrade head
       - name: Validate Docker build
         run: docker build -t highlevel-ai-lead-bridge .
+      - name: Validate Docker runtime health check
+        run: |
+          docker run -d --name highlevel-ai-lead-bridge -e WEBHOOK_SHARED_SECRET=ci-secret highlevel-ai-lead-bridge
+          for attempt in {1..20}; do
+            status="$(docker inspect --format='{{.State.Health.Status}}' highlevel-ai-lead-bridge)"
+            if [ "$status" = "healthy" ]; then exit 0; fi
+            sleep 2
+          done
+          docker logs highlevel-ai-lead-bridge
+          exit 1

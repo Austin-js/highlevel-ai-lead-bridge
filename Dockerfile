@@ -8,10 +8,11 @@ WORKDIR /app
 
 RUN addgroup --system app && adduser --system --ingroup app app
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md alembic.ini ./
 COPY app ./app
+COPY alembic ./alembic
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir . && mkdir -p /app/data && chown -R app:app /app
 
 USER app
 

@@ -10,6 +10,7 @@ from app.api.health import router as health_router
 from app.api.webhooks import router as webhooks_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
+from app.core.request_limits import RequestSizeLimitMiddleware
 from app.db.session import dispose_database, initialize_database
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
     """Build the FastAPI application with its initial routes."""
     settings = get_settings()
     app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
+    app.add_middleware(RequestSizeLimitMiddleware)
     app.include_router(health_router)
     app.include_router(webhooks_router)
     return app

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = Field(default=8000, ge=1, le=65535)
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
+    database_auto_create: bool = True
+    max_request_size_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
     webhook_shared_secret: str | None = None
     webhook_secret_header: str = "X-Webhook-Secret"
     llm_provider: str = "mock"

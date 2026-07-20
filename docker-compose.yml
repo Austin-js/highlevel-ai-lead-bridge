@@ -7,3 +7,20 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: highlevel_lead_bridge
+      POSTGRES_USER: highlevel
+      POSTGRES_PASSWORD: change-me
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U highlevel -d highlevel_lead_bridge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

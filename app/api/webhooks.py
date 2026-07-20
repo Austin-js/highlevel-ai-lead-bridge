@@ -1,9 +1,12 @@
 """HighLevel webhook intake endpoint."""
 
+import logging
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.privacy import contact_log_context
 from app.core.security import verify_webhook_secret
 from app.db.models import EventRecord
 from app.db.repositories import create_event, find_duplicate_event
@@ -11,6 +14,8 @@ from app.db.session import get_db_session
 from app.domain.events import HighLevelEventPayload, WebhookReceipt
 from app.services.event_processor import EventProcessor
 from app.services.lead_normalizer import derive_event_id, normalize_lead, stable_payload_hash
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -31,8 +36,11 @@ async def receive_highlevel_webhook(
     raw_payload = await request.json()
     payload_hash = stable_payload_hash(raw_payload)
     event_id = derive_event_id(payload, lead)
+    log_context = contact_log_context(lead, event_id)
+    logger.info("event_received", extra=log_context)
 
     if await find_duplicate_event(session, event_id, payload_hash):
+        logger.info("duplicate_detected", extra=log_context)
         return WebhookReceipt(status="duplicate", event_id=event_id, duplicate=True)
 
     event = EventRecord(
@@ -55,6 +63,7 @@ async def receive_highlevel_webhook(
     warnings = list(outcome.highlevel_sync.warnings)
     if not outcome.notification.success:
         warnings.insert(0, outcome.notification.error_message or "Notification delivery failed.")
+    logger.info("event_completed", extra=log_context)
     return WebhookReceipt(
         status=(
             "completed"
