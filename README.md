@@ -232,3 +232,7 @@ Use a reverse proxy with HTTPS in a public deployment, persist the application d
 - Prometheus metrics and OpenTelemetry tracing
 - Minimal read-only operations dashboard
 - Configurable routing by location or pipeline
+
+## License
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
