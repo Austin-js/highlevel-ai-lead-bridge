@@ -36,6 +36,8 @@ flowchart TD
 7. The service sends a notification and optionally updates the HighLevel contact.
 8. The event becomes `completed` or `partially_completed`; a duplicate receives a successful duplicate acknowledgement.
 
+Authenticated operators can inspect an event at `GET /admin/events/{event_id}` and replay it at `POST /admin/events/{event_id}/replay`. Replays use the original normalized payload, are capped by `MAX_EVENT_REPLAY_ATTEMPTS`, and create a dead-letter record when recovery attempts are exhausted.
+
 ## Data model
 
 `EventRecord` stores the event id, type, contact id, payload hash, raw and normalized data, timestamps, status, attempts, and any final error message.

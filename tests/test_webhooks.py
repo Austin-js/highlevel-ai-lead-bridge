@@ -15,6 +15,7 @@ from app.main import app
 def webhook_secret(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Supply isolated configuration without creating a local env file."""
     monkeypatch.setenv("WEBHOOK_SHARED_SECRET", "test-webhook-secret")
+    monkeypatch.setenv("ADMIN_SHARED_SECRET", "test-admin-secret")
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path / 'test.db'}")
     get_settings.cache_clear()
     get_session_factory.cache_clear()
@@ -167,4 +168,53 @@ def test_highlevel_configuration_failure_marks_event_partially_completed(
         "duplicate": False,
         "fallback_used": False,
         "warnings": ["HIGHLEVEL_API_TOKEN is not configured."],
+    }
+
+
+def test_admin_event_inspection_and_replay() -> None:
+    """Authorized operators can inspect and replay persisted processing events."""
+    webhook_headers = {"X-Webhook-Secret": "test-webhook-secret"}
+    admin_headers = {"X-Admin-Secret": "test-admin-secret"}
+    with TestClient(app) as client:
+        client.post(
+            "/webhooks/highlevel", headers=webhook_headers, json=_payload("evt_admin_replay")
+        )
+        detail_response = client.get("/admin/events/evt_admin_replay", headers=admin_headers)
+        replay_response = client.post(
+            "/admin/events/evt_admin_replay/replay", headers=admin_headers
+        )
+
+    assert detail_response.status_code == 200
+    assert detail_response.json()["attempt_count"] == 1
+    assert detail_response.json()["dead_lettered"] is False
+    assert replay_response.status_code == 200
+    assert replay_response.json() == {
+        "status": "completed",
+        "event_id": "evt_admin_replay",
+        "attempt_count": 2,
+        "dead_lettered": False,
+    }
+
+
+def test_admin_replay_moves_exhausted_event_to_dead_letters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Events at their configured replay limit are retained in dead-letter tracking."""
+    monkeypatch.setenv("MAX_EVENT_REPLAY_ATTEMPTS", "1")
+    get_settings.cache_clear()
+    webhook_headers = {"X-Webhook-Secret": "test-webhook-secret"}
+    admin_headers = {"X-Admin-Secret": "test-admin-secret"}
+    with TestClient(app) as client:
+        client.post(
+            "/webhooks/highlevel", headers=webhook_headers, json=_payload("evt_dead_letter")
+        )
+        replay_response = client.post("/admin/events/evt_dead_letter/replay", headers=admin_headers)
+
+    assert replay_response.status_code == 200
+    assert replay_response.json() == {
+        "status": "dead_lettered",
+        "event_id": "evt_dead_letter",
+        "attempt_count": 1,
+        "dead_lettered": True,
+        "warnings": ["Event moved to dead-letter tracking."],
     }

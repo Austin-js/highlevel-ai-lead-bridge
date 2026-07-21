@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.admin import router as admin_router
 from app.api.health import router as health_router
 from app.api.webhooks import router as webhooks_router
 from app.core.config import get_settings
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestSizeLimitMiddleware)
     app.include_router(health_router)
     app.include_router(webhooks_router)
+    app.include_router(admin_router)
     return app
 
 

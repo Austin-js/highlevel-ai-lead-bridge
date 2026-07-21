@@ -38,3 +38,25 @@ class WebhookReceipt(BaseModel):
     duplicate: bool
     fallback_used: bool | None = None
     warnings: list[str] | None = None
+
+
+class AdminEventDetail(BaseModel):
+    """Safe operational view of a persisted processing event."""
+
+    event_id: str
+    event_type: str
+    contact_id: str | None
+    status: str
+    attempt_count: int
+    error_message: str | None
+    dead_lettered: bool
+
+
+class ReplayReceipt(BaseModel):
+    """Outcome returned after an authenticated event replay request."""
+
+    status: str
+    event_id: str
+    attempt_count: int
+    dead_lettered: bool
+    warnings: list[str] | None = None

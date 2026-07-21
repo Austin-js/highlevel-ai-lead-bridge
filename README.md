@@ -189,6 +189,17 @@ HIGHLEVEL_RECOMMENDED_ACTION_FIELD_ID=
 
 When enabled, the service attempts to add a concise summary note, an `ai-reviewed` tag, a `high-intent` tag for qualified leads, and an optional recommended-action custom field. Each operation is isolated; a failure results in partial completion rather than deleting or invalidating the summary.
 
+## Event recovery
+
+Use a separate administrative secret for operational inspection and recovery:
+
+```env
+ADMIN_SHARED_SECRET=replace-me-admin-secret
+MAX_EVENT_REPLAY_ATTEMPTS=3
+```
+
+Authenticated operators can inspect an event with `GET /admin/events/{event_id}` and replay it with `POST /admin/events/{event_id}/replay`, both using `X-Admin-Secret`. Replays use the persisted normalized lead data. Events that exhaust their replay limit are retained in dead-letter tracking for manual investigation.
+
 ## Security and privacy
 
 - The webhook requires `X-Webhook-Secret` and compares secrets in constant time.
@@ -226,8 +237,7 @@ Use a reverse proxy with HTTPS in a public deployment, persist the application d
 
 ## Roadmap
 
-- Background queue and retry/replay controls
-- Dead-letter event handling
+- Background queue
 - PostgreSQL compose profile
 - Prometheus metrics and OpenTelemetry tracing
 - Minimal read-only operations dashboard

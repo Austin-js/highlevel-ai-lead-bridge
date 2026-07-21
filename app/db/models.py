@@ -48,3 +48,16 @@ class InferenceRecord(Base):
     fallback_used: Mapped[bool] = mapped_column(default=False)
     error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DeadLetterRecord(Base):
+    """A durable record of an event that exhausted its recovery attempts."""
+
+    __tablename__ = "dead_letters"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(unique=True, index=True)
+    external_event_id: Mapped[str] = mapped_column(String(128), index=True)
+    reason: Mapped[str] = mapped_column(Text)
+    replay_attempts: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/app.db"
     database_auto_create: bool = True
     max_request_size_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
+    admin_shared_secret: str | None = None
+    admin_secret_header: str = "X-Admin-Secret"
+    max_event_replay_attempts: int = Field(default=3, ge=1, le=20)
     webhook_shared_secret: str | None = None
     webhook_secret_header: str = "X-Webhook-Secret"
     llm_provider: str = "mock"
